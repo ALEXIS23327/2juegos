@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juego de Memoria: ¿Qué falta?</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: url("images/fondo2.jpg");
+      padding: 20px;
+      margin: 0;
+    }
+    h1 {
+      text-align: center;
+      color: #ffffff;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: rgba(4, 4, 4, 0.425);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .grid {
+      display: grid;
+      gap: 10px;
+      width: 100%;
+      margin: 0 auto;
+      justify-content: center;
+    }
+    .grid div {
+      width: 150px;
+      height: 150px;
+      position: relative;
+      border: 1px solid #ccc;
+      overflow: hidden;
+      background-color: #fff;
+    }
+    .grid div img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .grid div.hidden {
+      background: #ddd;
+    }
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .options img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: border 0.3s;
+      border-radius: 10px;
+    }
+    .options img:hover {
+      border: 2px solid #007BFF;
+    }
+    .message {
+      text-align: center;
+      font-size: 1.5em;
+      color: #00ff62;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    .back {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .back a {
+      display: inline-block;
+      background-color: #28a745;
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 5px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    .back a:hover {
+      background-color: #1e7e34;
+    }
+    .timer {
+      text-align: center;
+      font-size: 1.8em;
+      color: #ffffff;
+      margin-bottom: 20px;
+    }
+    .level-buttons {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .level-buttons button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+      background: linear-gradient(to bottom right, #87ff4f, #00f2ff);
+      color: #000000;
+      border: none;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+    }
+    .level-buttons button:hover {
+      background: linear-gradient(to bottom right, #82ffc9, #fff700);
+    }
+
+    /* Ajustes responsivos para pantallas pequeñas */
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.5em;
+      }
+      .timer {
+        font-size: 1.4em;
+      }
+      .level-buttons button {
+        padding: 8px 15px;
+        font-size: 0.9em;
+      }
+      .back a {
+        padding: 8px 12px;
+        font-size: 0.9em;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>¿Qué falta?</h1>
+  <div class="level-buttons">
+    <button onclick="startGame('easy')">Fácil (2x2)</button>
+    <button onclick="startGame('medium')">Medio (3x2)</button>
+    <button onclick="startGame('hard')">Difícil (4x2)</button>
+    <button onclick="startGame('impossible')">Avanzado (5x2)</button>
+  </div>
+  <div id="timer" class="timer"></div>
+  <div id="imageGrid" class="grid"></div>
+  <div id="optionsContainer" class="options"></div>
+  <div id="message" class="message"></div>
+  <div class="back"><a href="index.html">Volver al indice</a></div>
+</div>
+
+<script>
+let imagesArray = [];
+let missingImageSrc = "";
+let timerInterval;
+let answerTimerInterval;
+let currentLevel = "easy";
+
+// Cargar imágenes desde la carpeta "img_quefalta"
+const imageFolder = "img_quefalta/";
+const imageFiles = [
+  "image1.jpg", "image2.jpg", "image3.jpg", 
+  "image4.jpg", "image5.jpg", "image6.jpg", 
+  "image7.jpg", "image8.jpg", "image9.jpg",
+  "image10.jpg", "image11.jpg", "image12.jpg",
+  "image13.jpg", "image14.jpg", "image15.jpg",
+  "image16.jpg", "image17.jpg", "image18.jpg",
+  "image19.jpg", "image20.jpg", "image21.jpg",
+  "image22.jpg", "image23.jpg", "image24.jpg",
+  "image25.jpg", "image26.jpg", "image27.jpg",
+  "image28.jpg", "image29.jpg", "image30.jpg"
+];
+
+function startGame(level) {
+  currentLevel = level;
+  const imageGrid = document.getElementById('imageGrid');
+  const optionsContainer = document.getElementById('optionsContainer');
+  const messageDiv = document.getElementById('message');
+  const timerDiv = document.getElementById('timer');
+  
+  // Limpiar posibles intervalos anteriores
+  clearInterval(timerInterval);
+  clearInterval(answerTimerInterval);
+  
+  imageGrid.innerHTML = "";
+  optionsContainer.innerHTML = "";
+  messageDiv.innerText = "";
+  imagesArray = [];
+  missingImageSrc = "";
+  
+  // Configurar la cuadrícula según el nivel
+  let gridColumns, gridRows, totalImages;
+  switch (level) {
+    case "easy":
+      gridColumns = 2;
+      gridRows = 2;
+      totalImages = 4;
+      break;
+    case "medium":
+      gridColumns = 3;
+      gridRows = 2;
+      totalImages = 6;
+      break;
+    case "hard":
+      gridColumns = 4;
+      gridRows = 2;
+      totalImages = 8;
+      break;
+    case "impossible":
+      gridColumns = 5;
+      gridRows = 2;
+      totalImages = 10;
+      break;
+    default:
+      gridColumns = 3;
+      gridRows = 2;
+      totalImages = 6;
+  }
+  imageGrid.style.gridTemplateColumns = `repeat(${gridColumns}, 1fr)`;
+
+  // Seleccionar imágenes al azar
+  const selectedImages = [];
+  while (selectedImages.length < totalImages) {
+    const randomIndex = Math.floor(Math.random() * imageFiles.length);
+    const imageName = imageFiles[randomIndex];
+    if (!selectedImages.includes(imageName)) {
+      selectedImages.push(imageName);
+    }
+  }
+  
+  // Mostrar las imágenes en la cuadrícula
+  selectedImages.forEach((imageName) => {
+    const div = document.createElement('div');
+    const img = document.createElement('img');
+    img.src = imageFolder + imageName;
+    div.appendChild(img);
+    imageGrid.appendChild(div);
+    imagesArray.push(imageFolder + imageName);
+  });
+  
+  // Iniciar el temporizador para mostrar las imágenes
+  let timeLeft = 10;
+  timerDiv.innerText = `Tiempo: ${timeLeft}`;
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timerDiv.innerText = `Tiempo: ${timeLeft}`;
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      hideImageAndShuffle(imageGrid, selectedImages, optionsContainer, messageDiv);
+    }
+  }, 1000);
+}
+
+function hideImageAndShuffle(imageGrid, selectedImages, optionsContainer, messageDiv) {
+  if (imagesArray.length > 0) {
+    // Ocultar una imagen al azar
+    const randomIndex = Math.floor(Math.random() * imageGrid.children.length);
+    const divToHide = imageGrid.children[randomIndex];
+    missingImageSrc = divToHide.querySelector('img').src;
+    divToHide.classList.add('hidden');
+    divToHide.innerHTML = "";
+    
+    // Mezclar las imágenes restantes
+    const remainingImages = Array.from(imageGrid.children)
+      .filter((div) => !div.classList.contains('hidden'))
+      .map((div) => div.querySelector('img').src);
+    remainingImages.sort(() => Math.random() - 0.5);
+    imageGrid.innerHTML = "";
+    remainingImages.forEach((src) => {
+      const div = document.createElement('div');
+      const img = document.createElement('img');
+      img.src = src;
+      div.appendChild(img);
+      imageGrid.appendChild(div);
+    });
+    
+    // Mostrar 4 opciones (incluyendo la imagen que falta)
+    const options = [missingImageSrc];
+    while (options.length < 4) {
+      const randomIndex = Math.floor(Math.random() * imageFiles.length);
+      const imageName = imageFiles[randomIndex];
+      const imagePath = imageFolder + imageName;
+      // Asegurarse de no repetir la imagen faltante ni usar alguna ya visible en el tablero
+      if (!options.includes(imagePath) && !selectedImages.includes(imageName)) {
+        options.push(imagePath);
+      }
+    }
+    options.sort(() => Math.random() - 0.5);
+    options.forEach((imagePath) => {
+      let optionImg = document.createElement('img');
+      optionImg.src = imagePath;
+      optionImg.onclick = () => checkAnswer(imagePath);
+      optionsContainer.appendChild(optionImg);
+    });
+    
+    messageDiv.innerText = "¿Cuál imagen falta?";
+    startAnswerTimer();
+  }
+}
+
+function startAnswerTimer() {
+  let timeLeft = 10;
+  const timerDiv = document.getElementById('timer');
+  timerDiv.innerText = `Tiempo para elegir: ${timeLeft}`;
+  answerTimerInterval = setInterval(() => {
+    timeLeft--;
+    timerDiv.innerText = `Tiempo para elegir: ${timeLeft}`;
+    if (timeLeft <= 0) {
+      clearInterval(answerTimerInterval);
+      document.getElementById('message').innerText = "Tiempo agotado, reiniciando partida...";
+      setTimeout(() => { startGame(currentLevel); }, 2000);
+    }
+  }, 1000);
+}
+
+function checkAnswer(selectedSrc) {
+  clearInterval(answerTimerInterval);
+  const messageDiv = document.getElementById('message');
+  if (selectedSrc === missingImageSrc) {
+    messageDiv.innerText = "¡Correcto!";
+    // Aquí puedes decidir si reiniciar la partida automáticamente o esperar la acción del usuario.
+  } else {
+    messageDiv.innerText = "Incorrecto, reiniciando partida...";
+    setTimeout(() => { startGame(currentLevel); }, 2000);
+  }
+}
+</script>
+</body>
+</html>
